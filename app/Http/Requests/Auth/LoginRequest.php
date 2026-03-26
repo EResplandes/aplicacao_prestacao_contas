@@ -4,6 +4,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\Concerns\SanitizesInput;
 use App\Models\User;
+use App\Services\SecurityEventService;
 use App\Support\AdminPanel;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
@@ -39,8 +40,15 @@ class LoginRequest extends FormRequest
         $user = User::query()->where('email', $email)->first();
 
         if ($user && ! $user->is_active) {
+            app(SecurityEventService::class)->recordFailedLogin(
+                channel: 'web',
+                identifier: $email,
+                user: $user,
+                reason: 'inactive_account',
+            );
+
             throw ValidationException::withMessages([
-                'email' => 'Sua conta esta inativa. Procure o administrador do sistema.',
+                'email' => 'Sua conta está inativa. Procure o administrador do sistema.',
             ]);
         }
 
@@ -52,8 +60,14 @@ class LoginRequest extends FormRequest
                 RateLimiter::hit($key, 900);
             }
 
+            app(SecurityEventService::class)->recordFailedLogin(
+                channel: 'web',
+                identifier: $email,
+                user: $user,
+            );
+
             throw ValidationException::withMessages([
-                'email' => 'As credenciais informadas nao sao validas.',
+                'email' => 'As credenciais informadas não são corretas.',
             ]);
         }
 
@@ -83,9 +97,15 @@ class LoginRequest extends FormRequest
 
         event(new Lockout($this));
 
-        $seconds = collect($this->throttleKeys())
+        $seconds = (int) collect($this->throttleKeys())
             ->map(fn (string $key): int => RateLimiter::availableIn($key))
             ->max();
+
+        app(SecurityEventService::class)->recordLockout(
+            channel: 'web',
+            identifier: Str::lower($this->string('email')->value()),
+            retryAfterSeconds: $seconds,
+        );
 
         throw ValidationException::withMessages([
             'email' => "Muitas tentativas de acesso. Tente novamente em {$seconds} segundos.",

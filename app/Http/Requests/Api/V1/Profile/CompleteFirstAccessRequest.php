@@ -80,6 +80,15 @@ class CompleteFirstAccessRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'profile_photo.uploaded' => 'Não foi possível enviar a foto do usuário. Tente novamente com uma imagem menor.',
+            'profile_photo.max' => 'A foto do usuário não pode ser maior que 5 MB.',
+            'profile_photo.image' => 'A foto do usuário deve ser uma imagem válida.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge(SanitizesInput::forFields([

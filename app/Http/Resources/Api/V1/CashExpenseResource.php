@@ -20,6 +20,9 @@ class CashExpenseResource extends JsonResource
             'payment_method' => $this->payment_method?->value,
             'document_number' => $this->document_number,
             'notes' => $this->notes,
+            'reviewed_at' => $this->reviewed_at?->toIso8601String(),
+            'reviewed_by' => $this->reviewedBy?->name,
+            'review_notes' => $this->review_notes,
             'location' => $this->location_latitude !== null && $this->location_longitude !== null ? [
                 'latitude' => (float) $this->location_latitude,
                 'longitude' => (float) $this->location_longitude,

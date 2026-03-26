@@ -4,6 +4,7 @@ namespace App\Data\CashRequest;
 
 use App\Enums\ApprovalDecision;
 use App\Enums\CashApprovalStage;
+use Carbon\CarbonInterface;
 
 readonly class ApprovalDecisionData
 {
@@ -13,5 +14,6 @@ readonly class ApprovalDecisionData
         public ?string $comment = null,
         public ?int $rejectionReasonId = null,
         public bool $canResubmit = true,
+        public ?CarbonInterface $dueAccountabilityAt = null,
     ) {}
 }

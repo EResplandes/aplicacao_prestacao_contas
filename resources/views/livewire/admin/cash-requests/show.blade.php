@@ -148,6 +148,16 @@
                         <textarea id="financialComment" rows="3" wire:model.defer="financialComment"></textarea>
                     </div>
                     <div class="field">
+                        <label for="financialDueAccountabilityAt">Prazo de fechamento do caixa</label>
+                        <input id="financialDueAccountabilityAt" type="datetime-local" wire:model.defer="financialDueAccountabilityAt">
+                        <span class="secondary-text">
+                            Defina a data limite para o colaborador prestar contas e encerrar o caixa.
+                        </span>
+                        @error('financialDueAccountabilityAt')
+                            <span class="field-error">{{ $message }}</span>
+                        @enderror
+                    </div>
+                    <div class="field">
                         <label for="rejectionReasonFinancial">Motivo de reprovação</label>
                         <select id="rejectionReasonFinancial" wire:model.defer="rejectionReasonPublicId">
                             <option value="">Selecione</option>
@@ -245,7 +255,7 @@
                         <summary class="expense-summary">
                             <div>
                                 <strong>Pagamento registrado</strong>
-                                <div class="secondary-text">LiberaÃ§Ã£o concluÃ­da em {{ $cashRequest->released_at->format('d/m/Y H:i') }}.</div>
+                                <div class="secondary-text">Liberação concluída em {{ $cashRequest->released_at->format('d/m/Y H:i') }}.</div>
                             </div>
                             <div class="list-meta">
                                 <span class="status-pill is-success">Comprovado</span>
@@ -261,15 +271,15 @@
                                 </div>
                                 <div class="detail-item">
                                     <span class="label">Meio de pagamento</span>
-                                    <p>{{ $latestDeposit?->payment_method ? \App\Support\AdminLabel::paymentMethod($latestDeposit->payment_method) : 'NÃ£o informado' }}</p>
+                                    <p>{{ $latestDeposit?->payment_method ? \App\Support\AdminLabel::paymentMethod($latestDeposit->payment_method) : 'Não informado' }}</p>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="label">ResponsÃ¡vel pela liberaÃ§Ã£o</span>
-                                    <p>{{ $latestDeposit?->releasedBy?->name ?? 'NÃ£o informado' }}</p>
+                                    <span class="label">Responsável pela liberação</span>
+                                    <p>{{ $latestDeposit?->releasedBy?->name ?? 'Não informado' }}</p>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="label">ReferÃªncia</span>
-                                    <p>{{ $latestDeposit?->reference_number ?? 'Sem nÃºmero de referÃªncia' }}</p>
+                                    <span class="label">Referência</span>
+                                    <p>{{ $latestDeposit?->reference_number ?? 'Sem número de referência' }}</p>
                                 </div>
                             </div>
 
@@ -307,7 +317,7 @@
                                                     ></iframe>
                                                 @else
                                                     <div class="empty-state">
-                                                        Preview inline indisponivel para este formato.
+                                                        Preview inline indisponível para este formato.
                                                     </div>
                                                 @endif
 
@@ -319,7 +329,7 @@
                                     @endforeach
                                 </div>
                             @else
-                                <div class="empty-state">Nenhum comprovante de pagamento foi localizado para esta liberaÃ§Ã£o.</div>
+                                <div class="empty-state">Nenhum comprovante de pagamento foi localizado para esta liberação.</div>
                             @endif
                         </div>
                     </details>
@@ -487,7 +497,7 @@
                             <div class="detail-grid">
                                 <div class="detail-item">
                                     <span class="label">Fornecedor</span>
-                                    <p>{{ $expense->vendor_name ?? 'NÃ£o informado' }}</p>
+                                    <p>{{ $expense->vendor_name ?? 'Não informado' }}</p>
                                 </div>
                                 <div class="detail-item">
                                     <span class="label">Data do gasto</span>
@@ -495,18 +505,84 @@
                                 </div>
                                 <div class="detail-item">
                                     <span class="label">Documento</span>
-                                    <p>{{ $expense->document_number ?? 'NÃ£o informado' }}</p>
+                                    <p>{{ $expense->document_number ?? 'Não informado' }}</p>
                                 </div>
                                 <div class="detail-item">
                                     <span class="label">Forma de pagamento</span>
-                                    <p>{{ $expense->payment_method ? \App\Support\AdminLabel::paymentMethod($expense->payment_method) : 'NÃ£o informada' }}</p>
+                                    <p>{{ $expense->payment_method ? \App\Support\AdminLabel::paymentMethod($expense->payment_method) : 'Não informada' }}</p>
                                 </div>
                             </div>
 
                             @if ($expense->notes)
                                 <div class="detail-item">
-                                    <span class="label">ObservaÃ§Ãµes</span>
+                                    <span class="label">Observações</span>
                                     <p>{{ $expense->notes }}</p>
+                                </div>
+                            @endif
+
+                            <div class="detail-item">
+                                <span class="label">Revisão administrativa</span>
+                                <p>
+                                    @if ($expense->reviewed_at)
+                                        Revisado por {{ $expense->reviewedBy?->name ?? 'Usuário não identificado' }}
+                                        em {{ $expense->reviewed_at->format('d/m/Y H:i') }}.
+                                    @else
+                                        Este gasto ainda não recebeu validação administrativa.
+                                    @endif
+                                </p>
+                            </div>
+
+                            @if ($expense->review_notes)
+                                <div class="detail-item">
+                                    <span class="label">Parecer da revisão</span>
+                                    <p>{{ $expense->review_notes }}</p>
+                                </div>
+                            @endif
+
+                            @if ($canReviewExpenses)
+                                <div class="field">
+                                    <label for="expense-review-{{ $expense->public_id }}">Observação da revisão</label>
+                                    <textarea
+                                        id="expense-review-{{ $expense->public_id }}"
+                                        rows="3"
+                                        wire:model.defer="expenseReviewNotes.{{ $expense->public_id }}"
+                                    ></textarea>
+                                    <span class="secondary-text">
+                                        Registre o parecer antes de aprovar, reprovar ou sinalizar o gasto.
+                                    </span>
+                                </div>
+
+                                <div class="row">
+                                    <button
+                                        class="button secondary"
+                                        type="button"
+                                        wire:click.prevent="approveExpense('{{ $expense->public_id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="approveExpense('{{ $expense->public_id }}')"
+                                    >
+                                        <span wire:loading.remove wire:target="approveExpense('{{ $expense->public_id }}')">Dar ok no gasto</span>
+                                        <span wire:loading wire:target="approveExpense('{{ $expense->public_id }}')">Salvando...</span>
+                                    </button>
+                                    <button
+                                        class="button danger"
+                                        type="button"
+                                        wire:click.prevent="rejectExpense('{{ $expense->public_id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="rejectExpense('{{ $expense->public_id }}')"
+                                    >
+                                        <span wire:loading.remove wire:target="rejectExpense('{{ $expense->public_id }}')">Reprovar gasto</span>
+                                        <span wire:loading wire:target="rejectExpense('{{ $expense->public_id }}')">Salvando...</span>
+                                    </button>
+                                    <button
+                                        class="button ghost"
+                                        type="button"
+                                        wire:click.prevent="flagExpense('{{ $expense->public_id }}')"
+                                        wire:loading.attr="disabled"
+                                        wire:target="flagExpense('{{ $expense->public_id }}')"
+                                    >
+                                        <span wire:loading.remove wire:target="flagExpense('{{ $expense->public_id }}')">Sinalizar gasto</span>
+                                        <span wire:loading wire:target="flagExpense('{{ $expense->public_id }}')">Salvando...</span>
+                                    </button>
                                 </div>
                             @endif
 
@@ -544,7 +620,7 @@
                                                     ></iframe>
                                                 @else
                                                     <div class="empty-state">
-                                                        Preview inline indisponivel para este formato.
+                                                        Preview inline indisponível para este formato.
                                                     </div>
                                                 @endif
 
@@ -556,7 +632,7 @@
                                     @endforeach
                                 </div>
                             @else
-                                <div class="empty-state">Este gasto ainda nÃ£o possui anexos.</div>
+                                <div class="empty-state">Este gasto ainda não possui anexos.</div>
                             @endif
                         </div>
                     </details>

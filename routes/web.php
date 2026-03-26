@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function (): void {
         Route::view('/dashboard', 'admin.dashboard.index')->middleware('admin.section:dashboard')->name('dashboard');
         Route::view('/reports', 'admin.reports.index')->middleware('admin.section:reports')->name('reports.index');
         Route::view('/financial-calendar', 'admin.financial-calendar.index')->middleware('admin.section:financial_calendar')->name('financial-calendar.index');
+        Route::view('/security', 'admin.security.index')->middleware('admin.section:security')->name('security.index');
         Route::view('/approvals', 'admin.approvals.index')->middleware('admin.section:approvals')->name('approvals.index');
         Route::view('/cash-monitoring', 'admin.cash-monitoring.index')->middleware('admin.section:cash_monitoring')->name('cash-monitoring.index');
         Route::view('/organization', 'admin.organization.index')->middleware('admin.section:organization')->name('organization.index');

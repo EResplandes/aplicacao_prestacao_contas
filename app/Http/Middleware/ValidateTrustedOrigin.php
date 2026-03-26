@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\SecurityEventService;
 use App\Support\Api\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
@@ -9,6 +10,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ValidateTrustedOrigin
 {
+    public function __construct(private readonly SecurityEventService $securityEventService) {}
+
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->shouldValidate($request)) {
@@ -18,14 +21,16 @@ class ValidateTrustedOrigin
         $origin = $this->resolveOrigin($request);
 
         if (! $origin || ! $this->isTrustedOrigin($origin, $request)) {
+            $this->securityEventService->recordUntrustedOrigin($origin);
+
             if ($request->expectsJson()) {
                 return ApiResponse::error(
-                    'Origem da requisicao nao confiavel.',
+                    'Origem da requisição não confiável.',
                     403
                 );
             }
 
-            abort(403, 'Origem da requisicao nao confiavel.');
+            abort(403, 'Origem da requisição não confiável.');
         }
 
         return $next($request);

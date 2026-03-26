@@ -151,7 +151,6 @@
                                 </svg>
                             </button>
                         </form>
-
                     </div>
                 </section>
             </div>
@@ -192,4 +191,3 @@
     </script>
 </body>
 </html>
-

@@ -7,6 +7,7 @@ use App\Models\ApprovalRule;
 use App\Models\CashRequest;
 use App\Models\CostCenter;
 use App\Models\Department;
+use App\Models\SecurityEvent;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -66,6 +67,11 @@ class AdminAuthenticationTest extends TestCase
             ->assertSee('Calend')
             ->assertSee('Calend');
 
+        $this->get('/admin/security')
+            ->assertOk()
+            ->assertSee('Monitoramento de brute force')
+            ->assertSee('Painel de segurança');
+
         $this->get('/admin/approvals')
             ->assertOk()
             ->assertSee('Fila de novos caixas')
@@ -116,6 +122,7 @@ class AdminAuthenticationTest extends TestCase
         $this->get('/admin/cost-centers')->assertForbidden();
         $this->get('/admin/users')->assertForbidden();
         $this->get('/admin/policies')->assertForbidden();
+        $this->get('/admin/security')->assertForbidden();
         $this->get('/admin/audit')->assertForbidden();
     }
 
@@ -232,6 +239,27 @@ class AdminAuthenticationTest extends TestCase
             ->assertSessionHasErrors('email');
 
         $this->assertGuest();
+    }
+
+    public function test_failed_web_login_creates_security_event(): void
+    {
+        $this->seed();
+
+        $this->from('/login')
+            ->withHeader('Origin', config('app.url'))
+            ->post('/login', [
+                'email' => 'admin@example.com',
+                'password' => 'senha-invalida',
+            ])
+            ->assertRedirect('/login')
+            ->assertSessionHasErrors('email');
+
+        $this->assertTrue(
+            SecurityEvent::query()
+                ->where('event_type', 'login_failed')
+                ->where('channel', 'web')
+                ->exists()
+        );
     }
 
     public function test_notifications_route_is_not_available_anymore(): void

@@ -27,6 +27,15 @@ class ReleaseCashRequestRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'receipt.uploaded' => 'Não foi possível enviar o comprovante de pagamento. Tente novamente com um arquivo menor.',
+            'receipt.max' => 'O comprovante de pagamento não pode ser maior que 10 MB.',
+            'receipt.mimes' => 'O comprovante de pagamento deve ser PDF, JPG, JPEG, PNG ou WEBP.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge(SanitizesInput::forFields([

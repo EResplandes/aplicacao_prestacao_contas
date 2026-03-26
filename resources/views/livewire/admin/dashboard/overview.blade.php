@@ -3,7 +3,7 @@
         <div class="section-header">
             <div>
                 <span class="hero-label">Resumo</span>
-                <h3 class="section-title mt-3.5">Atalhos da operacao</h3>
+                <h3 class="section-title mt-3.5">Atalhos da operação</h3>
                 <p class="section-copy">Acesse filas, monitoramento, cadastros e alertas a partir do painel inicial.</p>
             </div>
             <div class="row">

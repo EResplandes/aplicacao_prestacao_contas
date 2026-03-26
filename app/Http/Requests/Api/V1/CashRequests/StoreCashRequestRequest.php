@@ -29,6 +29,14 @@ class StoreCashRequestRequest extends FormRequest
         ];
     }
 
+    public function messages(): array
+    {
+        return [
+            'attachments.*.uploaded' => 'Não foi possível enviar um dos anexos da solicitação. Tente novamente com um arquivo menor.',
+            'attachments.*.max' => 'Cada anexo da solicitação pode ter no máximo 10 MB.',
+        ];
+    }
+
     protected function prepareForValidation(): void
     {
         $this->merge(SanitizesInput::forFields([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Actions\CashRequest\CreateCashRequestAction;
 use App\Actions\CashRequest\DecideCashRequestAction;
+use App\Actions\CashRequest\CloseCashRequestAction;
 use App\Actions\CashRequest\ReleaseCashRequestAction;
 use App\Actions\CashRequest\RespondCashRejectionAction;
 use App\Data\CashRequest\ApprovalDecisionData;
@@ -36,6 +37,7 @@ class CashRequestController extends Controller
         private readonly CashRequestRepository $cashRequestRepository,
         private readonly CreateCashRequestAction $createCashRequestAction,
         private readonly DecideCashRequestAction $decideCashRequestAction,
+        private readonly CloseCashRequestAction $closeCashRequestAction,
         private readonly ReleaseCashRequestAction $releaseCashRequestAction,
         private readonly RespondCashRejectionAction $respondCashRejectionAction,
     ) {}
@@ -90,8 +92,10 @@ class CashRequestController extends Controller
             'approvals.actor',
             'rejections.reason',
             'expenses.attachments',
+            'expenses.category',
             'expenses.ocrRead',
             'expenses.fraudAlerts',
+            'expenses.reviewedBy',
         ])));
     }
 
@@ -110,6 +114,9 @@ class CashRequestController extends Controller
                 comment: $request->validated('comment'),
                 rejectionReasonId: $rejectionReasonId,
                 canResubmit: (bool) $request->boolean('can_resubmit', true),
+                dueAccountabilityAt: $request->filled('due_accountability_at')
+                    ? Carbon::parse($request->validated('due_accountability_at'))
+                    : null,
             ),
         );
 
@@ -131,6 +138,9 @@ class CashRequestController extends Controller
                 comment: $request->validated('comment'),
                 rejectionReasonId: $rejectionReasonId,
                 canResubmit: (bool) $request->boolean('can_resubmit', true),
+                dueAccountabilityAt: $request->filled('due_accountability_at')
+                    ? Carbon::parse($request->validated('due_accountability_at'))
+                    : null,
             ),
         );
 
@@ -170,6 +180,18 @@ class CashRequestController extends Controller
         );
 
         return ApiResponse::success(new CashRequestResource($cashRequest), 'Resposta de reprovacao registrada com sucesso.');
+    }
+
+    public function closeAccountability(Request $request, CashRequest $cashRequest): JsonResponse
+    {
+        $this->authorize('closeAccountability', $cashRequest);
+
+        $cashRequest = $this->closeCashRequestAction->execute(
+            actor: $request->user(),
+            cashRequest: $cashRequest,
+        );
+
+        return ApiResponse::success(new CashRequestResource($cashRequest), 'Caixa encerrado com sucesso.');
     }
 
     public function statement(Request $request, CashRequest $cashRequest): JsonResponse

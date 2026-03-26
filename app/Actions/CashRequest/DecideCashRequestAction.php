@@ -4,6 +4,8 @@ namespace App\Actions\CashRequest;
 
 use App\Data\CashRequest\ApprovalDecisionData;
 use App\Enums\ApprovalDecision;
+use App\Enums\CashApprovalStage;
+use App\Exceptions\BusinessRuleViolation;
 use App\Models\CashRequest;
 use App\Models\User;
 use App\Services\AuditService;
@@ -23,8 +25,13 @@ class DecideCashRequestAction
     {
         return DB::transaction(function () use ($actor, $cashRequest, $data): CashRequest {
             $previousStatus = $cashRequest->status;
+            $previousDueAccountabilityAt = $cashRequest->due_accountability_at;
 
             if ($data->decision === ApprovalDecision::APPROVED) {
+                if ($data->stage === CashApprovalStage::FINANCIAL && ! $data->dueAccountabilityAt) {
+                    throw new BusinessRuleViolation('Informe a data limite para fechamento do caixa antes de aprovar no financeiro.');
+                }
+
                 $cashRequest->approvals()->create([
                     'stage' => $data->stage,
                     'decision' => $data->decision,
@@ -36,6 +43,9 @@ class DecideCashRequestAction
                 $cashRequest->update([
                     'status' => $this->workflowService->approve($cashRequest, $data->stage),
                     'approved_amount' => $cashRequest->approved_amount ?: $cashRequest->requested_amount,
+                    'due_accountability_at' => $data->stage === CashApprovalStage::FINANCIAL
+                        ? $data->dueAccountabilityAt
+                        : $cashRequest->due_accountability_at,
                 ]);
             } else {
                 $cashRequest->rejections()->create([
@@ -56,9 +66,19 @@ class DecideCashRequestAction
                 event: 'cash_request.decision',
                 action: $data->decision->value,
                 auditable: $cashRequest,
-                oldValues: ['status' => $previousStatus?->value],
-                newValues: ['status' => $cashRequest->fresh()->status?->value],
-                metadata: ['stage' => $data->stage->value, 'comment' => $data->comment],
+                oldValues: [
+                    'status' => $previousStatus?->value,
+                    'due_accountability_at' => optional($previousDueAccountabilityAt)->toIso8601String(),
+                ],
+                newValues: [
+                    'status' => $cashRequest->fresh()->status?->value,
+                    'due_accountability_at' => optional($cashRequest->fresh()->due_accountability_at)->toIso8601String(),
+                ],
+                metadata: [
+                    'stage' => $data->stage->value,
+                    'comment' => $data->comment,
+                    'due_accountability_at' => optional($data->dueAccountabilityAt)->toIso8601String(),
+                ],
             );
 
             $this->notificationService->notifyCashRequestDecision(

@@ -44,16 +44,23 @@ class ReleaseCashRequestAction
             ]);
 
             if ($data->receipt) {
+                $originalName = $data->receipt->getClientOriginalName();
+                $mimeType = $data->receipt->getMimeType();
+                $sizeBytes = $data->receipt->getSize();
+                $realPath = $data->receipt->getRealPath();
+                $sha256 = $realPath && is_file($realPath)
+                    ? hash_file('sha256', $realPath)
+                    : hash('sha256', $data->receipt->get());
                 $storedPath = $data->receipt->store("cash-deposits/{$cashRequest->public_id}", 'public');
 
                 $deposit->attachments()->create([
                     'type' => AttachmentType::DEPOSIT_RECEIPT,
                     'disk' => 'public',
                     'path' => $storedPath,
-                    'original_name' => $data->receipt->getClientOriginalName(),
-                    'mime_type' => $data->receipt->getMimeType(),
-                    'size_bytes' => $data->receipt->getSize(),
-                    'sha256' => hash_file('sha256', $data->receipt->getRealPath()),
+                    'original_name' => $originalName,
+                    'mime_type' => $mimeType,
+                    'size_bytes' => $sizeBytes,
+                    'sha256' => $sha256,
                     'uploaded_by_id' => $actor->id,
                 ]);
             }

@@ -4,13 +4,16 @@ namespace App\Livewire\Admin\CashRequests;
 
 use App\Actions\CashRequest\DecideCashRequestAction;
 use App\Actions\CashRequest\ReleaseCashRequestAction;
+use App\Actions\CashExpense\ReviewCashExpenseAction;
 use App\Data\CashRequest\ApprovalDecisionData;
 use App\Data\CashRequest\ReleaseCashRequestData;
 use App\Enums\ApprovalDecision;
+use App\Enums\CashExpenseStatus;
 use App\Enums\CashApprovalStage;
 use App\Enums\CashRequestStatus;
 use App\Enums\PaymentMethod;
 use App\Exceptions\BusinessRuleViolation;
+use App\Models\CashExpense;
 use App\Models\CashRequest;
 use App\Models\CashRequestApproval;
 use App\Models\CashRequestRejection;
@@ -32,6 +35,8 @@ class Show extends Component
 
     public string $financialComment = '';
 
+    public string $financialDueAccountabilityAt = '';
+
     public string $releasePaymentMethod = 'pix';
 
     public float $releaseAmount = 0;
@@ -43,6 +48,11 @@ class Show extends Component
     public ?string $feedbackMessage = null;
 
     public string $feedbackTone = 'success';
+
+    /**
+     * @var array<string, string>
+     */
+    public array $expenseReviewNotes = [];
 
     public function mount(CashRequest $cashRequest): void
     {
@@ -62,10 +72,15 @@ class Show extends Component
             'expenses.attachments',
             'expenses.ocrRead',
             'expenses.fraudAlerts',
+            'expenses.reviewedBy',
             'statements',
         ]);
 
+        $this->syncExpenseReviewNotes();
+
         $this->releaseAmount = (float) ($this->cashRequest->approved_amount ?: $this->cashRequest->requested_amount);
+        $this->financialDueAccountabilityAt = $this->cashRequest->due_accountability_at?->format('Y-m-d\TH:i')
+            ?? now()->addDays(7)->format('Y-m-d\TH:i');
     }
 
     public function approveManager(): void
@@ -92,6 +107,12 @@ class Show extends Component
 
     public function approveFinancial(): void
     {
+        $this->validate([
+            'financialDueAccountabilityAt' => ['required', 'date'],
+        ], [], [
+            'financialDueAccountabilityAt' => 'prazo de fechamento do caixa',
+        ]);
+
         $this->handleDecision(
             action: app(DecideCashRequestAction::class),
             stage: CashApprovalStage::FINANCIAL,
@@ -165,8 +186,24 @@ class Show extends Component
             'canHandleFinancialStage' => $this->canHandleFinancialStage(),
             'canTakeFinancialDecision' => $this->canTakeFinancialDecision(),
             'canRegisterRelease' => $this->canRegisterRelease(),
+            'canReviewExpenses' => $this->canReviewExpenses(),
             'rejectionReasons' => RejectionReason::query()->orderBy('name')->get(),
         ]);
+    }
+
+    public function approveExpense(string $expensePublicId): void
+    {
+        $this->reviewExpense($expensePublicId, CashExpenseStatus::APPROVED, 'Gasto aprovado com sucesso.');
+    }
+
+    public function rejectExpense(string $expensePublicId): void
+    {
+        $this->reviewExpense($expensePublicId, CashExpenseStatus::REJECTED, 'Gasto reprovado com sucesso.');
+    }
+
+    public function flagExpense(string $expensePublicId): void
+    {
+        $this->reviewExpense($expensePublicId, CashExpenseStatus::FLAGGED, 'Gasto sinalizado para revisão.');
     }
 
     private function refreshRequest(): void
@@ -185,8 +222,13 @@ class Show extends Component
             'expenses.attachments',
             'expenses.ocrRead',
             'expenses.fraudAlerts',
+            'expenses.reviewedBy',
             'statements',
         ]);
+
+        $this->syncExpenseReviewNotes();
+        $this->financialDueAccountabilityAt = $this->cashRequest->due_accountability_at?->format('Y-m-d\TH:i')
+            ?? now()->addDays(7)->format('Y-m-d\TH:i');
     }
 
     private function handleDecision(
@@ -220,6 +262,9 @@ class Show extends Component
                     decision: $decision,
                     comment: $comment,
                     rejectionReasonId: $reasonId,
+                    dueAccountabilityAt: $stage === CashApprovalStage::FINANCIAL && $decision === ApprovalDecision::APPROVED
+                        ? Carbon::parse($this->financialDueAccountabilityAt)
+                        : null,
                 ),
             );
 
@@ -242,6 +287,8 @@ class Show extends Component
     {
         $this->managerComment = '';
         $this->financialComment = '';
+        $this->financialDueAccountabilityAt = $this->cashRequest->due_accountability_at?->format('Y-m-d\TH:i')
+            ?? now()->addDays(7)->format('Y-m-d\TH:i');
         $this->rejectionReasonPublicId = null;
     }
 
@@ -526,6 +573,11 @@ class Show extends Component
             && $this->cashRequest->status === CashRequestStatus::FINANCIAL_APPROVED;
     }
 
+    private function canReviewExpenses(): bool
+    {
+        return AdminPanel::canReviewExpense(auth()->user());
+    }
+
     private function latestApprovalForStage(CashApprovalStage $stage): ?CashRequestApproval
     {
         /** @var CashRequestApproval|null $approval */
@@ -551,5 +603,55 @@ class Show extends Component
     private function formatDateTime($date): ?string
     {
         return $date?->format('d/m/Y H:i');
+    }
+
+    private function reviewExpense(string $expensePublicId, CashExpenseStatus $status, string $successMessage): void
+    {
+        $actor = auth()->user();
+        abort_unless($actor, 403);
+        abort_unless($this->canReviewExpenses(), 403);
+
+        $this->resetFeedback();
+
+        /** @var CashExpense|null $expense */
+        $expense = $this->cashRequest->expenses
+            ->firstWhere('public_id', $expensePublicId);
+
+        if (! $expense) {
+            $this->feedbackTone = 'error';
+            $this->feedbackMessage = 'Não foi possível localizar o gasto selecionado.';
+
+            return;
+        }
+
+        try {
+            app(ReviewCashExpenseAction::class)->execute(
+                actor: $actor,
+                expense: $expense,
+                status: $status,
+                reviewNotes: $this->expenseReviewNotes[$expensePublicId] ?? null,
+            );
+
+            $this->refreshRequest();
+            $this->feedbackTone = 'success';
+            $this->feedbackMessage = $successMessage;
+        } catch (BusinessRuleViolation $exception) {
+            $this->feedbackTone = 'error';
+            $this->feedbackMessage = $exception->getMessage();
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $this->feedbackTone = 'error';
+            $this->feedbackMessage = 'Não foi possível revisar o gasto agora. Atualize a página e tente novamente.';
+        }
+    }
+
+    private function syncExpenseReviewNotes(): void
+    {
+        $this->expenseReviewNotes = $this->cashRequest->expenses
+            ->mapWithKeys(fn (CashExpense $expense): array => [
+                $expense->public_id => (string) ($expense->review_notes ?? ''),
+            ])
+            ->all();
     }
 }

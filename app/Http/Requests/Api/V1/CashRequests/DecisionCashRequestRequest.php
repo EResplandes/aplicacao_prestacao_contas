@@ -21,6 +21,7 @@ class DecisionCashRequestRequest extends FormRequest
             'comment' => ['nullable', 'string'],
             'rejection_reason_public_id' => ['nullable', 'exists:rejection_reasons,public_id'],
             'can_resubmit' => ['sometimes', 'boolean'],
+            'due_accountability_at' => ['nullable', 'date'],
         ];
     }
 

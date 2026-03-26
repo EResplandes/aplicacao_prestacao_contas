@@ -5,6 +5,7 @@ use App\Enums\CashExpenseStatus;
 use App\Enums\CashRequestStatus;
 use App\Models\CashExpense;
 use App\Models\CashRequest;
+use App\Models\SecurityEvent;
 use App\Support\AdminPanel;
 
 $text = static fn (string $value): string => html_entity_decode($value, ENT_QUOTES, 'UTF-8');
@@ -41,6 +42,11 @@ $flaggedExpensesCount = AdminPanel::scopeCashExpenses(CashExpense::query(), $aut
     ->where('status', CashExpenseStatus::FLAGGED)
     ->count();
 
+$securityAlertCount = SecurityEvent::query()
+    ->where('detected_at', '>=', now()->subDay())
+    ->whereIn('severity', ['high', 'critical'])
+    ->count();
+
 $totalRequestCount = max((clone $visibleCashRequests)->count(), 1);
 $progressOpen = min(100, (int) round(($openCashCount / $totalRequestCount) * 100));
 $progressPending = min(100, (int) round(($pendingApprovalCount / $totalRequestCount) * 100));
@@ -49,6 +55,7 @@ $progressFraud = min(100, (int) round(($flaggedExpensesCount / $totalRequestCoun
 $canViewDashboard = AdminPanel::canAccessSection($authUser, 'dashboard');
 $canViewReports = AdminPanel::canAccessSection($authUser, 'reports');
 $canViewFinancialCalendar = AdminPanel::canAccessSection($authUser, 'financial_calendar');
+$canViewSecurity = AdminPanel::canAccessSection($authUser, 'security');
 $canViewApprovals = AdminPanel::canAccessSection($authUser, 'approvals');
 $canViewCashMonitoring = AdminPanel::canAccessSection($authUser, 'cash_monitoring');
 $canViewCashRequests = AdminPanel::canAccessSection($authUser, 'cash_requests');
@@ -203,6 +210,7 @@ $pageSubtitle = match (true) {
     request()->routeIs('admin.dashboard') => $text('Resumo operacional do caixa corporativo.'),
     request()->routeIs('admin.reports.index') => $text('Indicadores e recortes por caixa, usu&aacute;rio, centro de custo e categoria.'),
     request()->routeIs('admin.financial-calendar.index') => $text('Agenda de presta&ccedil;&atilde;o, vencimentos e fechamentos do financeiro.'),
+    request()->routeIs('admin.security.index') => $text('Falhas de login, brute force, origens bloqueadas e sondagens suspeitas capturadas pelo backend.'),
     request()->routeIs('admin.approvals.index') => $text('Fila de novas solicita&ccedil;&otilde;es aguardando decis&atilde;o.'),
     request()->routeIs('admin.cash-monitoring.index') => $text('Monitor de caixas liberados, gastos e pend&ecirc;ncias de presta&ccedil;&atilde;o.'),
     request()->routeIs('admin.organization.index') => $text('Empresas, departamentos, gestores e estrutura base.'),
@@ -244,6 +252,14 @@ $pageNavigation = match (true) {
         'breadcrumbs' => [
             ['label' => $text('P&aacute;gina inicial'), 'url' => $homeUrl],
             ['label' => $text('Calend&aacute;rio financeiro'), 'url' => null],
+        ],
+        'fallback_back_url' => $homeUrl,
+        'back_label' => $text('Voltar para p&aacute;gina inicial'),
+    ],
+    request()->routeIs('admin.security.index') => [
+        'breadcrumbs' => [
+            ['label' => $text('P&aacute;gina inicial'), 'url' => $homeUrl],
+            ['label' => 'Segurança', 'url' => null],
         ],
         'fallback_back_url' => $homeUrl,
         'back_label' => $text('Voltar para p&aacute;gina inicial'),
@@ -383,7 +399,7 @@ $backLabel = $pageNavigation['back_label'];
                     </div>
 
                     <nav class="side-nav">
-                        @if ($canViewDashboard || $canViewReports || $canViewFinancialCalendar || $canViewAudit)
+                        @if ($canViewDashboard || $canViewReports || $canViewFinancialCalendar || $canViewSecurity || $canViewAudit)
                             <div class="nav-label">Gestão</div>
 
                             @if ($canViewDashboard)
@@ -404,6 +420,13 @@ $backLabel = $pageNavigation['back_label'];
                                 <a class="nav-item {{ request()->routeIs('admin.financial-calendar.index') ? 'is-active' : '' }}" href="{{ route('admin.financial-calendar.index') }}">
                                     <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M7 4.5v3M17 4.5v3M4.5 9h15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /><path d="M6.5 6.5h11A2 2 0 0 1 19.5 8.5v9A2 2 0 0 1 17.5 19.5h-11A2 2 0 0 1 4.5 17.5v-9A2 2 0 0 1 6.5 6.5Z" stroke="currentColor" stroke-width="1.8" /><path d="M8.5 13h3M8.5 16h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" /></svg></span>
                                     <span class="nav-copy"><span>Calendário Financeiro</span><span class="nav-badge">{{ $dueAccountabilityCount }}</span></span>
+                                </a>
+                            @endif
+
+                            @if ($canViewSecurity)
+                                <a class="nav-item {{ request()->routeIs('admin.security.index') ? 'is-active' : '' }}" href="{{ route('admin.security.index') }}">
+                                    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3.75 19.5 6.5v4.87c0 4.29-2.8 8.38-7.5 9.88-4.7-1.5-7.5-5.59-7.5-9.88V6.5L12 3.75Z" stroke="currentColor" stroke-width="1.8" /><path d="M9.5 11.75 11 13.25l3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg></span>
+                                    <span class="nav-copy"><span>Segurança</span><span class="nav-badge">{{ $securityAlertCount }}</span></span>
                                 </a>
                             @endif
 

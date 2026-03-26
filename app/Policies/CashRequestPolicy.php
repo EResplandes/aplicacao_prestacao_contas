@@ -45,6 +45,11 @@ class CashRequestPolicy
         return $user->can('cash_requests.respond_rejection') && $cashRequest->user_id === $user->id;
     }
 
+    public function closeAccountability(User $user, CashRequest $cashRequest): bool
+    {
+        return $cashRequest->user_id === $user->id || $user->hasRole('admin');
+    }
+
     public function createExpense(User $user, CashRequest $cashRequest): bool
     {
         return $user->can('cash_expenses.create') && $cashRequest->user_id === $user->id;

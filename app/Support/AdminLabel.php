@@ -106,6 +106,35 @@ class AdminLabel
         ]);
     }
 
+    public static function securityEventType(mixed $value): string
+    {
+        return self::translate($value, [
+            'login_failed' => 'Falha de login',
+            'login_lockout' => 'Bloqueio por força bruta',
+            'rate_limited' => 'Limite de requisições excedido',
+            'untrusted_origin_blocked' => 'Origem não confiável bloqueada',
+            'suspicious_probe' => 'Sondagem suspeita',
+        ]);
+    }
+
+    public static function securityChannel(mixed $value): string
+    {
+        return self::translate($value, [
+            'web' => 'Painel web',
+            'api' => 'API',
+        ]);
+    }
+
+    public static function securitySeverity(mixed $value): string
+    {
+        return self::translate($value, [
+            'low' => 'Baixa',
+            'medium' => 'Média',
+            'high' => 'Alta',
+            'critical' => 'Crítica',
+        ]);
+    }
+
     public static function scopeType(mixed $value): string
     {
         return self::translate($value, [

@@ -25,7 +25,21 @@ class CashRequestResource extends JsonResource
             'notes' => $this->notes,
             'submitted_at' => $this->submitted_at?->toIso8601String(),
             'released_at' => $this->released_at?->toIso8601String(),
+            'closed_at' => $this->closed_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
+            'can_close_accountability' => $this->when(
+                $request->user() !== null,
+                fn (): bool => $this->status !== null
+                    && in_array($this->status->value, [
+                        'released',
+                        'partially_accounted',
+                        'fully_accounted',
+                    ], true)
+                    && $this->closed_at === null
+                    && $this->expenses()
+                        ->whereIn('status', ['pending', 'submitted', 'flagged'])
+                        ->count() === 0,
+            ),
             'department' => $this->department ? [
                 'public_id' => $this->department->public_id,
                 'name' => $this->department->name,

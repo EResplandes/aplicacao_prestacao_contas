@@ -2,6 +2,7 @@
 
 use App\Exceptions\BusinessRuleViolation;
 use App\Exceptions\SecurityViolation;
+use App\Http\Middleware\DetectSuspiciousProbe;
 use App\Http\Middleware\EnsureAdminPanelAccess;
 use App\Http\Middleware\EnsureAdminPanelSectionAccess;
 use App\Http\Middleware\EnsureRecentMfaChallenge;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -27,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(SecurityHeaders::class);
+        $middleware->append(DetectSuspiciousProbe::class);
         $middleware->web(prepend: [ValidateTrustedOrigin::class]);
         $middleware->api(prepend: [ValidateTrustedOrigin::class]);
         $middleware->alias([
@@ -50,7 +53,24 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $exceptions->render(function (ValidationException $exception, Request $request) {
             if ($request->expectsJson()) {
-                return ApiResponse::error('Erro de validacao.', 422, $exception->errors());
+                $firstError = collect($exception->errors())
+                    ->flatten()
+                    ->first();
+
+                $resolvedError = is_string($firstError) ? trim($firstError) : '';
+
+                if ($resolvedError !== '' && Str::startsWith($resolvedError, 'validation.')) {
+                    $resolvedError = match ($resolvedError) {
+                        'validation.uploaded' => 'Não foi possível enviar o arquivo. Tente novamente com uma imagem ou PDF menor.',
+                        default => __($resolvedError),
+                    };
+                }
+
+                return ApiResponse::error(
+                    $resolvedError !== '' ? $resolvedError : 'Erro de validação.',
+                    422,
+                    $exception->errors()
+                );
             }
         });
 

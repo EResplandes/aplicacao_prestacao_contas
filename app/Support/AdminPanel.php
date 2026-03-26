@@ -117,9 +117,19 @@ class AdminPanel
         return self::isAdmin($user) || self::isFinance($user);
     }
 
+    public static function canAccessSecurity(?User $user): bool
+    {
+        return self::isAdmin($user);
+    }
+
     public static function canRegisterRelease(?User $user): bool
     {
         return self::canManageFinancialDecision($user);
+    }
+
+    public static function canReviewExpense(?User $user): bool
+    {
+        return self::isAdmin($user) || self::isFinance($user);
     }
 
     private static function isManagerResponsibleFor(?User $user, CashRequest $cashRequest): bool

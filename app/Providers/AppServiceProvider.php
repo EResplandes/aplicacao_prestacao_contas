@@ -8,6 +8,7 @@ use App\Models\CashExpense;
 use App\Models\CashRequest;
 use App\Models\User;
 use App\Models\UserPayoutAccount;
+use App\Services\SecurityEventService;
 use App\Support\Api\ApiResponse;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -47,14 +48,15 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('api', function (Request $request): Limit {
             return $this->rateLimit(
+                'api',
                 Limit::perMinute(100)->by('api:ip:'.$request->ip()),
             );
         });
 
         RateLimiter::for('authenticated-api', function (Request $request): array {
             return [
-                $this->rateLimit(Limit::perMinute(100)->by('authenticated:user:'.$request->user()?->getAuthIdentifier())),
-                $this->rateLimit(Limit::perMinute(100)->by('authenticated:ip:'.$request->ip())),
+                $this->rateLimit('authenticated-api', Limit::perMinute(100)->by('authenticated:user:'.$request->user()?->getAuthIdentifier())),
+                $this->rateLimit('authenticated-api', Limit::perMinute(100)->by('authenticated:ip:'.$request->ip())),
             ];
         });
 
@@ -62,28 +64,28 @@ class AppServiceProvider extends ServiceProvider
             $login = mb_strtolower(trim((string) $request->input('email')));
 
             return [
-                $this->rateLimit(Limit::perMinutes(15, 5)->by('auth-login:ip:'.$request->ip())),
-                $this->rateLimit(Limit::perMinutes(15, 5)->by('auth-login:login:'.$login.'|'.$request->ip())),
+                $this->rateLimit('auth-login', Limit::perMinutes(15, 5)->by('auth-login:ip:'.$request->ip())),
+                $this->rateLimit('auth-login', Limit::perMinutes(15, 5)->by('auth-login:login:'.$login.'|'.$request->ip())),
             ];
         });
 
         RateLimiter::for('auth-refresh', function (Request $request): array {
             return [
-                $this->rateLimit(Limit::perMinute(20)->by('auth-refresh:ip:'.$request->ip())),
+                $this->rateLimit('auth-refresh', Limit::perMinute(20)->by('auth-refresh:ip:'.$request->ip())),
             ];
         });
 
         RateLimiter::for('cash-approval', function (Request $request): array {
             return [
-                $this->rateLimit(Limit::perMinute(10)->by('cash-approval:user:'.$request->user()?->getAuthIdentifier())),
-                $this->rateLimit(Limit::perMinute(10)->by('cash-approval:ip:'.$request->ip())),
+                $this->rateLimit('cash-approval', Limit::perMinute(10)->by('cash-approval:user:'.$request->user()?->getAuthIdentifier())),
+                $this->rateLimit('cash-approval', Limit::perMinute(10)->by('cash-approval:ip:'.$request->ip())),
             ];
         });
 
         RateLimiter::for('bb-payment', function (Request $request): array {
             return [
-                $this->rateLimit(Limit::perMinute(5)->by('bb-payment:user:'.$request->user()?->getAuthIdentifier())),
-                $this->rateLimit(Limit::perMinute(5)->by('bb-payment:ip:'.$request->ip())),
+                $this->rateLimit('bb-payment', Limit::perMinute(5)->by('bb-payment:user:'.$request->user()?->getAuthIdentifier())),
+                $this->rateLimit('bb-payment', Limit::perMinute(5)->by('bb-payment:ip:'.$request->ip())),
             ];
         });
 
@@ -97,11 +99,13 @@ class AppServiceProvider extends ServiceProvider
         ]);
     }
 
-    private function rateLimit(Limit $limit): Limit
+    private function rateLimit(string $limiter, Limit $limit): Limit
     {
-        return $limit->response(function (Request $request, array $headers) {
+        return $limit->response(function (Request $request, array $headers) use ($limiter) {
+            app(SecurityEventService::class)->recordRateLimit($limiter, $headers);
+
             return ApiResponse::error(
-                'Limite de requisicoes excedido. Aguarde antes de tentar novamente.',
+                'Limite de requisições excedido. Aguarde antes de tentar novamente.',
                 429,
                 [],
                 $headers

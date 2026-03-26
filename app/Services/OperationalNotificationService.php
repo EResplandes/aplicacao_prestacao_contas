@@ -162,6 +162,70 @@ class OperationalNotificationService
         }
     }
 
+    public function notifyExpenseReviewed(CashExpense $expense): void
+    {
+        $expense->loadMissing(['cashRequest.user', 'category', 'reviewedBy']);
+
+        $cashRequest = $expense->cashRequest;
+        if (! $cashRequest || ! $cashRequest->user) {
+            return;
+        }
+
+        $formattedAmount = 'R$ '.number_format((float) $expense->amount, 2, ',', '.');
+        $categoryName = $expense->category?->name ?? 'despesa';
+
+        $payload = match ($expense->status?->value) {
+            'approved' => [
+                'title' => 'Gasto aprovado',
+                'message' => "O gasto {$expense->description} ({$formattedAmount}) foi aprovado no caixa {$cashRequest->request_number}.",
+                'type' => 'cash_expense.approved',
+            ],
+            'rejected' => [
+                'title' => 'Gasto reprovado',
+                'message' => "O gasto {$expense->description} ({$formattedAmount}) foi reprovado no caixa {$cashRequest->request_number}.",
+                'type' => 'cash_expense.rejected',
+            ],
+            default => [
+                'title' => 'Gasto sinalizado',
+                'message' => "O gasto {$categoryName} de {$formattedAmount} no caixa {$cashRequest->request_number} foi sinalizado para revisão.",
+                'type' => 'cash_expense.flagged',
+            ],
+        };
+
+        $cashRequest->user->notify(new OperationalAlertNotification(
+            title: $payload['title'],
+            message: $payload['message'],
+            type: $payload['type'],
+            context: [
+                'cash_request_public_id' => $cashRequest->public_id,
+                'cash_request_number' => $cashRequest->request_number,
+                'expense_public_id' => $expense->public_id,
+                'expense_status' => $expense->status?->value,
+            ],
+            occurredAt: now(),
+        ));
+    }
+
+    public function notifyCashClosed(CashRequest $cashRequest): void
+    {
+        $cashRequest->loadMissing(['user']);
+
+        if (! $cashRequest->user) {
+            return;
+        }
+
+        $cashRequest->user->notify(new OperationalAlertNotification(
+            title: 'Caixa encerrado',
+            message: "A prestação de contas do caixa {$cashRequest->request_number} foi finalizada com sucesso.",
+            type: 'cash_request.closed',
+            context: [
+                'cash_request_public_id' => $cashRequest->public_id,
+                'cash_request_number' => $cashRequest->request_number,
+            ],
+            occurredAt: now(),
+        ));
+    }
+
     private function notifyRequester(
         CashRequest $cashRequest,
         string $title,

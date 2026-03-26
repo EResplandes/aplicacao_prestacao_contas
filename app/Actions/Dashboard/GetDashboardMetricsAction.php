@@ -35,11 +35,7 @@ class GetDashboardMetricsAction
             ->sum('available_amount');
 
         $averageRequest = (float) CashRequest::query()->avg('requested_amount');
-        $averageApprovalHours = round((float) CashRequest::query()
-            ->join('cash_request_approvals', 'cash_requests.id', '=', 'cash_request_approvals.cash_request_id')
-            ->where('cash_request_approvals.decision', 'approved')
-            ->selectRaw('AVG((JULIANDAY(cash_request_approvals.acted_at) - JULIANDAY(cash_requests.submitted_at)) * 24) as avg_hours')
-            ->value('avg_hours'), 2);
+        $averageApprovalHours = round($this->resolveAverageApprovalHours(), 2);
 
         $totalRequests = CashRequest::query()->count();
         $underAnalysisTotal = CashRequest::query()->whereIn('status', [
@@ -106,5 +102,21 @@ class GetDashboardMetricsAction
                 ],
             ],
         ];
+    }
+
+    private function resolveAverageApprovalHours(): float
+    {
+        $query = CashRequest::query()
+            ->join('cash_request_approvals', 'cash_requests.id', '=', 'cash_request_approvals.cash_request_id')
+            ->where('cash_request_approvals.decision', 'approved');
+
+        return match (DB::connection()->getDriverName()) {
+            'sqlite' => (float) $query
+                ->selectRaw('AVG((JULIANDAY(cash_request_approvals.acted_at) - JULIANDAY(cash_requests.submitted_at)) * 24) as avg_hours')
+                ->value('avg_hours'),
+            default => (float) $query
+                ->selectRaw('AVG(TIMESTAMPDIFF(SECOND, cash_requests.submitted_at, cash_request_approvals.acted_at) / 3600) as avg_hours')
+                ->value('avg_hours'),
+        };
     }
 }

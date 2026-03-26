@@ -32,7 +32,7 @@ class StoreCashExpenseRequest extends FormRequest
             'location.accuracy_meters' => ['nullable', 'numeric', 'min:0'],
             'location.captured_at' => ['required', 'date'],
             'attachments' => ['nullable', 'array'],
-            'attachments.*' => ['file', 'max:10240'],
+            'attachments.*' => ['file', 'max:20480'],
             'ocr_read' => ['nullable', 'array'],
             'ocr_read.raw_text' => ['nullable', 'string'],
             'ocr_read.parsed_amount' => ['nullable', 'numeric'],
@@ -42,6 +42,15 @@ class StoreCashExpenseRequest extends FormRequest
             'ocr_read.confidence' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'ocr_read.device_id' => ['nullable', 'string', 'max:120'],
             'ocr_read.metadata' => ['nullable', 'array'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'attachments.*.uploaded' => 'Não foi possível enviar o comprovante. Tente novamente com uma imagem menor ou em outro formato.',
+            'attachments.*.max' => 'O comprovante não pode ser maior que 20 MB.',
+            'attachments.*.file' => 'O comprovante enviado é inválido.',
         ];
     }
 

@@ -8,6 +8,7 @@ use App\Http\Resources\Api\V1\ProfileResource;
 use App\Models\User;
 use App\Services\AuditService;
 use App\Services\Auth\RefreshTokenService;
+use App\Services\SecurityEventService;
 use App\Support\Api\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly RefreshTokenService $refreshTokenService,
         private readonly AuditService $auditService,
+        private readonly SecurityEventService $securityEventService,
     ) {}
 
     public function login(LoginRequest $request): JsonResponse
@@ -29,11 +31,24 @@ class AuthController extends Controller
             ->first();
 
         if (! $user || ! Hash::check($request->validated('password'), $user->password)) {
-            return ApiResponse::error('Credenciais invalidas.', 422);
+            $this->securityEventService->recordFailedLogin(
+                channel: 'api',
+                identifier: $request->validated('email'),
+                user: $user,
+            );
+
+            return ApiResponse::error('Credenciais inválidas.', 422);
         }
 
         if (! $user->is_active) {
-            return ApiResponse::error('Usuario inativo.', 403);
+            $this->securityEventService->recordFailedLogin(
+                channel: 'api',
+                identifier: $request->validated('email'),
+                user: $user,
+                reason: 'inactive_account',
+            );
+
+            return ApiResponse::error('Usuário inativo.', 403);
         }
 
         $user->forceFill(['last_login_at' => now()])->save();

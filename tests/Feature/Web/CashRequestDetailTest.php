@@ -3,6 +3,7 @@
 namespace Tests\Feature\Web;
 
 use App\Enums\CashApprovalStage;
+use App\Enums\CashExpenseStatus;
 use App\Enums\CashRequestStatus;
 use App\Enums\PaymentMethod;
 use App\Livewire\Admin\CashRequests\Show;
@@ -10,6 +11,7 @@ use App\Models\ApprovalRule;
 use App\Models\CashRequest;
 use App\Models\CostCenter;
 use App\Models\Department;
+use App\Models\ExpenseCategory;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -171,6 +173,7 @@ class CashRequestDetailTest extends TestCase
             ->test(Show::class, ['cashRequest' => $cashRequest])
             ->assertSee('Aprovar financeiro')
             ->set('financialComment', 'Fluxo validado pelo financeiro.')
+            ->set('financialDueAccountabilityAt', '2026-04-05T18:30')
             ->call('approveFinancial')
             ->assertSee('Aprovação financeira registrada.')
             ->assertDontSee('Aprovar financeiro')
@@ -180,6 +183,7 @@ class CashRequestDetailTest extends TestCase
 
         $this->assertSame(CashRequestStatus::FINANCIAL_APPROVED, $cashRequest->status);
         $this->assertSame(1120.0, (float) $cashRequest->approved_amount);
+        $this->assertSame('2026-04-05 18:30:00', $cashRequest->due_accountability_at?->format('Y-m-d H:i:s'));
     }
 
     public function test_livewire_manager_approval_button_moves_request_to_financial_stage(): void
@@ -410,7 +414,7 @@ class CashRequestDetailTest extends TestCase
             ->test(Show::class, ['cashRequest' => $cashRequest])
             ->set('releaseAmount', 890)
             ->set('releasePaymentMethod', PaymentMethod::PIX->value)
-            ->set('releaseReceipt', UploadedFile::fake()->image('comprovante.png'))
+            ->set('releaseReceipt', UploadedFile::fake()->create('comprovante.pdf', 120, 'application/pdf'))
             ->call('release')
             ->assertHasNoErrors();
 
@@ -424,5 +428,74 @@ class CashRequestDetailTest extends TestCase
 
         $this->assertNotNull($attachment);
         Storage::disk('public')->assertExists($attachment->path);
+    }
+
+    public function test_livewire_can_approve_expense_from_cash_request_detail(): void
+    {
+        $this->seed();
+
+        $admin = User::query()->where('email', 'admin@example.com')->firstOrFail();
+        $requester = User::query()->where('email', 'requester@example.com')->firstOrFail();
+        $department = Department::query()->firstOrFail();
+        $costCenter = CostCenter::query()->firstOrFail();
+        $approvalRule = ApprovalRule::query()->firstOrFail();
+        $expenseCategory = ExpenseCategory::query()->firstOrFail();
+
+        $cashRequest = CashRequest::query()->create([
+            'request_number' => 'CX-TEST-DET-009',
+            'user_id' => $requester->id,
+            'manager_id' => null,
+            'department_id' => $department->id,
+            'cost_center_id' => $costCenter->id,
+            'approval_rule_id' => $approvalRule->id,
+            'status' => CashRequestStatus::RELEASED,
+            'requested_amount' => 300,
+            'approved_amount' => 300,
+            'released_amount' => 300,
+            'spent_amount' => 0,
+            'available_amount' => 300,
+            'purpose' => 'Despesa de campo',
+            'justification' => 'Fluxo aguardando validação do gasto.',
+            'planned_use_date' => '2026-03-29',
+            'due_accountability_at' => '2026-04-05 18:00:00',
+            'submitted_at' => '2026-03-25 12:00:00',
+            'released_at' => '2026-03-25 13:00:00',
+        ]);
+
+        $cashRequest->deposits()->create([
+            'released_by_id' => $admin->id,
+            'payment_method' => PaymentMethod::PIX,
+            'amount' => 300,
+            'reference_number' => 'PIX-TEST-009',
+            'released_at' => '2026-03-25 13:00:00',
+        ]);
+
+        $expense = $cashRequest->expenses()->create([
+            'user_id' => $requester->id,
+            'expense_category_id' => $expenseCategory->id,
+            'status' => CashExpenseStatus::SUBMITTED,
+            'spent_at' => '2026-03-25 14:00:00',
+            'submitted_at' => '2026-03-25 14:01:00',
+            'amount' => 300,
+            'description' => 'Hotel',
+            'vendor_name' => 'Hotel Central',
+        ]);
+
+        Livewire::actingAs($admin)
+            ->test(Show::class, ['cashRequest' => $cashRequest])
+            ->set("expenseReviewNotes.{$expense->public_id}", 'Comprovante validado e valor coerente.')
+            ->call('approveExpense', $expense->public_id)
+            ->assertSee('Gasto aprovado com sucesso.');
+
+        $expense->refresh();
+        $cashRequest->refresh();
+
+        $this->assertSame(CashExpenseStatus::APPROVED, $expense->status);
+        $this->assertSame('Comprovante validado e valor coerente.', $expense->review_notes);
+        $this->assertNotNull($expense->reviewed_at);
+        $this->assertSame($admin->id, $expense->reviewed_by_id);
+        $this->assertSame(CashRequestStatus::FULLY_ACCOUNTED, $cashRequest->status);
+        $this->assertSame(300.0, (float) $cashRequest->spent_amount);
+        $this->assertSame(0.0, (float) $cashRequest->available_amount);
     }
 }
