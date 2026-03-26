@@ -100,7 +100,6 @@
                                             id="email"
                                             type="email"
                                             name="email"
-                                            value="{{ old('email', 'admin@example.com') }}"
                                             autocomplete="email"
                                             placeholder="Digite seu e-mail corporativo"
                                             required
@@ -153,10 +152,6 @@
                             </button>
                         </form>
 
-                        <div class="access-note">
-                            <strong>Acesso local:</strong> admin@example.com<br>
-                            Senha padrão: password
-                        </div>
                     </div>
                 </section>
             </div>

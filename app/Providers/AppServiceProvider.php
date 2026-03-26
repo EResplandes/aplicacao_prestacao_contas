@@ -9,9 +9,11 @@ use App\Models\CashRequest;
 use App\Models\User;
 use App\Models\UserPayoutAccount;
 use App\Support\Api\ApiResponse;
+use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureLocale();
+
         if (config('livewire.csp_safe')) {
             Livewire::setScriptRoute(function ($handle) {
                 $file = config('app.debug') ? 'livewire.csp.js' : 'livewire.csp.min.js';
@@ -103,5 +107,26 @@ class AppServiceProvider extends ServiceProvider
                 $headers
             );
         });
+    }
+
+    private function configureLocale(): void
+    {
+        $locale = config('app.locale', 'pt_BR');
+
+        app()->setLocale($locale);
+        CarbonImmutable::setLocale($locale);
+        Date::setLocale($locale);
+
+        setlocale(
+            LC_TIME,
+            'pt_BR.UTF-8',
+            'pt_BR.utf8',
+            'pt_BR',
+            'Portuguese_Brazil.1252'
+        );
+
+        if (class_exists(\Locale::class)) {
+            \Locale::setDefault(str_replace('_', '-', $locale));
+        }
     }
 }
