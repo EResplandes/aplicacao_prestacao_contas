@@ -31,6 +31,7 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
         Route::post('/cash-requests/{cashRequest}/release', [CashRequestController::class, 'release'])->middleware('throttle:cash-approval');
         Route::post('/cash-requests/{cashRequest}/rejections/respond', [CashRequestController::class, 'respondRejection']);
         Route::post('/cash-requests/{cashRequest}/close-accountability', [CashRequestController::class, 'closeAccountability']);
+        Route::post('/cash-requests/{cashRequest}/messages', [CashRequestController::class, 'sendMessage']);
         Route::get('/cash-requests/{cashRequest}/statement', [CashRequestController::class, 'statement']);
 
         Route::get('/expenses', [CashExpenseController::class, 'index']);

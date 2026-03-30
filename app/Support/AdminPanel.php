@@ -10,9 +10,18 @@ class AdminPanel
 {
     public static function canAccess(?User $user): bool
     {
+        if (self::isRequester($user)) {
+            return false;
+        }
+
         return self::isAdmin($user)
             || self::isFinance($user)
             || self::isManager($user);
+    }
+
+    public static function isRequester(?User $user): bool
+    {
+        return $user?->hasRole('requester') ?? false;
     }
 
     public static function isAdmin(?User $user): bool
@@ -39,6 +48,10 @@ class AdminPanel
 
     public static function canAccessSection(?User $user, string $section): bool
     {
+        if (! self::canAccess($user)) {
+            return false;
+        }
+
         if (self::isAdmin($user)) {
             return true;
         }
@@ -96,6 +109,10 @@ class AdminPanel
 
     public static function canViewCashRequest(?User $user, CashRequest $cashRequest): bool
     {
+        if (! self::canAccess($user)) {
+            return false;
+        }
+
         if (self::isAdmin($user) || self::isFinance($user)) {
             return true;
         }
@@ -130,6 +147,16 @@ class AdminPanel
     public static function canReviewExpense(?User $user): bool
     {
         return self::isAdmin($user) || self::isFinance($user);
+    }
+
+    public static function canViewFinanceChat(?User $user, CashRequest $cashRequest): bool
+    {
+        return (self::isAdmin($user) || self::isFinance($user)) && self::canViewCashRequest($user, $cashRequest);
+    }
+
+    public static function canSendFinanceChatMessage(?User $user, CashRequest $cashRequest): bool
+    {
+        return self::canViewFinanceChat($user, $cashRequest);
     }
 
     private static function isManagerResponsibleFor(?User $user, CashRequest $cashRequest): bool

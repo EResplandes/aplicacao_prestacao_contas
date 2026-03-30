@@ -107,6 +107,11 @@ class CashRequest extends Model
         return $this->hasMany(CashExpense::class);
     }
 
+    public function messages(): HasMany
+    {
+        return $this->hasMany(CashRequestMessage::class)->oldest('created_at');
+    }
+
     public function statements(): HasMany
     {
         return $this->hasMany(CashStatement::class);

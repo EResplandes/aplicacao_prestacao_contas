@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api\V1;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Gate;
 
 class CashRequestResource extends JsonResource
 {
@@ -40,6 +41,15 @@ class CashRequestResource extends JsonResource
                         ->whereIn('status', ['pending', 'submitted', 'flagged'])
                         ->count() === 0,
             ),
+            'can_view_chat' => $this->when(
+                $request->user() !== null,
+                fn (): bool => Gate::forUser($request->user())->allows('viewChat', $this->resource),
+            ),
+            'can_send_chat_message' => $this->when(
+                $request->user() !== null,
+                fn (): bool => Gate::forUser($request->user())->allows('sendChatMessage', $this->resource)
+                    && ! in_array($this->status?->value, ['closed', 'cancelled'], true),
+            ),
             'department' => $this->department ? [
                 'public_id' => $this->department->public_id,
                 'name' => $this->department->name,
@@ -72,6 +82,7 @@ class CashRequestResource extends JsonResource
             ])->values()),
             'deposits' => $this->whenLoaded('deposits', fn () => CashDepositResource::collection($this->deposits)),
             'expenses' => $this->whenLoaded('expenses', fn () => CashExpenseResource::collection($this->expenses)),
+            'messages' => $this->whenLoaded('messages', fn () => CashRequestMessageResource::collection($this->messages)),
         ];
     }
 }

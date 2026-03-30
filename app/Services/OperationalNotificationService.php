@@ -4,12 +4,15 @@ namespace App\Services;
 
 use App\Enums\ApprovalDecision;
 use App\Enums\CashApprovalStage;
+use App\Enums\CashRequestMessageSenderRole;
 use App\Models\CashExpense;
 use App\Models\CashRequest;
+use App\Models\CashRequestMessage;
 use App\Models\User;
 use App\Notifications\OperationalAlertNotification;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 class OperationalNotificationService
 {
@@ -221,6 +224,53 @@ class OperationalNotificationService
             context: [
                 'cash_request_public_id' => $cashRequest->public_id,
                 'cash_request_number' => $cashRequest->request_number,
+            ],
+            occurredAt: now(),
+        ));
+    }
+
+    public function notifyCashRequestChatMessage(CashRequest $cashRequest, CashRequestMessage $chatMessage): void
+    {
+        $cashRequest->loadMissing(['user']);
+        $chatMessage->loadMissing(['sender']);
+
+        $excerpt = Str::limit($chatMessage->message, 120);
+
+        if ($chatMessage->sender_role === CashRequestMessageSenderRole::REQUESTER) {
+            $recipients = $this->financeAndAdminUsers()
+                ->reject(fn (User $user): bool => $user->id === $chatMessage->sender_id)
+                ->values();
+
+            $this->notifyOperations(
+                $recipients,
+                'Nova mensagem sobre o caixa',
+                "{$chatMessage->sender?->name} enviou uma mensagem no caixa {$cashRequest->request_number}: {$excerpt}",
+                'cash_request.chat_message',
+                $cashRequest,
+                [
+                    'chat_message_public_id' => $chatMessage->public_id,
+                    'sender_name' => $chatMessage->sender?->name,
+                    'sender_role' => $chatMessage->sender_role?->value,
+                ],
+            );
+
+            return;
+        }
+
+        if (! $cashRequest->user || $cashRequest->user->id === $chatMessage->sender_id) {
+            return;
+        }
+
+        $cashRequest->user->notify(new OperationalAlertNotification(
+            title: 'Resposta do financeiro',
+            message: "O financeiro enviou uma mensagem no caixa {$cashRequest->request_number}: {$excerpt}",
+            type: 'cash_request.chat_message',
+            context: [
+                'cash_request_public_id' => $cashRequest->public_id,
+                'cash_request_number' => $cashRequest->request_number,
+                'chat_message_public_id' => $chatMessage->public_id,
+                'sender_name' => $chatMessage->sender?->name,
+                'sender_role' => $chatMessage->sender_role?->value,
             ],
             occurredAt: now(),
         ));

@@ -7,6 +7,7 @@ use App\Actions\CashRequest\DecideCashRequestAction;
 use App\Actions\CashRequest\CloseCashRequestAction;
 use App\Actions\CashRequest\ReleaseCashRequestAction;
 use App\Actions\CashRequest\RespondCashRejectionAction;
+use App\Actions\CashRequest\SendCashRequestMessageAction;
 use App\Data\CashRequest\ApprovalDecisionData;
 use App\Data\CashRequest\CreateCashRequestData;
 use App\Data\CashRequest\ReleaseCashRequestData;
@@ -18,7 +19,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\CashRequests\DecisionCashRequestRequest;
 use App\Http\Requests\Api\V1\CashRequests\ReleaseCashRequestRequest;
 use App\Http\Requests\Api\V1\CashRequests\RespondRejectionRequest;
+use App\Http\Requests\Api\V1\CashRequests\SendCashRequestMessageRequest;
 use App\Http\Requests\Api\V1\CashRequests\StoreCashRequestRequest;
+use App\Http\Resources\Api\V1\CashRequestMessageResource;
 use App\Http\Resources\Api\V1\CashRequestResource;
 use App\Http\Resources\Api\V1\CashStatementResource;
 use App\Models\CashRequest;
@@ -40,6 +43,7 @@ class CashRequestController extends Controller
         private readonly CloseCashRequestAction $closeCashRequestAction,
         private readonly ReleaseCashRequestAction $releaseCashRequestAction,
         private readonly RespondCashRejectionAction $respondCashRejectionAction,
+        private readonly SendCashRequestMessageAction $sendCashRequestMessageAction,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -96,6 +100,7 @@ class CashRequestController extends Controller
             'expenses.ocrRead',
             'expenses.fraudAlerts',
             'expenses.reviewedBy',
+            'messages.sender',
         ])));
     }
 
@@ -192,6 +197,23 @@ class CashRequestController extends Controller
         );
 
         return ApiResponse::success(new CashRequestResource($cashRequest), 'Caixa encerrado com sucesso.');
+    }
+
+    public function sendMessage(SendCashRequestMessageRequest $request, CashRequest $cashRequest): JsonResponse
+    {
+        $this->authorize('sendChatMessage', $cashRequest);
+
+        $message = $this->sendCashRequestMessageAction->execute(
+            actor: $request->user(),
+            cashRequest: $cashRequest,
+            message: $request->validated('message'),
+        );
+
+        return ApiResponse::success(
+            new CashRequestMessageResource($message),
+            'Mensagem enviada com sucesso.',
+            201,
+        );
     }
 
     public function statement(Request $request, CashRequest $cashRequest): JsonResponse

@@ -13,7 +13,7 @@ $text = static fn (string $value): string => html_entity_decode($value, ENT_QUOT
 $authUser = auth()->user();
 $roleLabel = $authUser?->getRoleNames()->first()
     ? \App\Support\AdminLabel::role((string) $authUser->getRoleNames()->first())
-    : 'Operação financeira';
+    : $text('Opera&ccedil;&atilde;o financeira');
 
 $visibleCashRequests = AdminPanel::scopeCashRequests(CashRequest::query(), $authUser);
 
@@ -80,131 +80,8 @@ $avatarSvg = rawurlencode(sprintf(
     htmlspecialchars($initials ?: 'GC', ENT_QUOTES, 'UTF-8'),
 ));
 $avatarDataUri = "data:image/svg+xml,{$avatarSvg}";
-
-$pageSubtitle = match (true) {
-    request()->routeIs('admin.dashboard') => 'Resumo operacional do caixa corporativo.',
-    request()->routeIs('admin.reports.index') => 'Indicadores e recortes por caixa, usuário, centro de custo e categoria.',
-    request()->routeIs('admin.financial-calendar.index') => 'Agenda de prestação, vencimentos e fechamentos do financeiro.',
-    request()->routeIs('admin.approvals.index') => 'Fila de novas solicitações aguardando decisão.',
-    request()->routeIs('admin.cash-monitoring.index') => 'Monitor de caixas liberados, gastos e pendências de prestação.',
-    request()->routeIs('admin.organization.index') => 'Empresas, departamentos, gestores e estrutura base.',
-    request()->routeIs('admin.cost-centers.index') => 'Cadastro e consulta operacional de centros de custo.',
-    request()->routeIs('admin.users.index') => 'Cadastro de usuários, perfis e vínculos organizacionais.',
-    request()->routeIs('admin.policies.index') => 'Regras de aprovação, limites, categorias e conformidade.',
-    request()->routeIs('admin.audit.index') => 'Registro de eventos e alterações do sistema.',
-    request()->routeIs('admin.cash-requests.index') => 'Lista operacional das solicitações de caixa.',
-    request()->routeIs('admin.cash-requests.show') => 'Detalhe completo da solicitação e da prestação.',
-    default => 'Operação centralizada do caixa corporativo.',
-};
 $homeRouteName = AdminPanel::homeRouteFor($authUser);
 $homeUrl = route($homeRouteName);
-
-$pageNavigation = match (true) {
-    request()->routeIs('admin.dashboard') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => null],
-        ],
-        'fallback_back_url' => null,
-        'back_label' => null,
-    ],
-    request()->routeIs('admin.cash-requests.show') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'SolicitaÃ§Ãµes', 'url' => route('admin.cash-requests.index')],
-            ['label' => $title ?? 'Detalhes da solicitaÃ§Ã£o', 'url' => null],
-        ],
-        'fallback_back_url' => route('admin.cash-requests.index'),
-        'back_label' => 'Voltar para solicitaÃ§Ãµes',
-    ],
-    request()->routeIs('admin.reports.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'RelatÃ³rios', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.financial-calendar.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'CalendÃ¡rio financeiro', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.approvals.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'AprovaÃ§Ãµes', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.cash-monitoring.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'Caixas e gastos', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.organization.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'OrganizaÃ§Ã£o', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.cost-centers.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'Centros de custo', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.users.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'UsuÃ¡rios', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.policies.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'PolÃ­ticas', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.audit.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'Auditoria', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    request()->routeIs('admin.cash-requests.index') => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => 'SolicitaÃ§Ãµes', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-    default => [
-        'breadcrumbs' => [
-            ['label' => 'PÃ¡gina inicial', 'url' => $homeUrl],
-            ['label' => $title ?? 'Painel administrativo', 'url' => null],
-        ],
-        'fallback_back_url' => $homeUrl,
-        'back_label' => 'Voltar para pÃ¡gina inicial',
-    ],
-};
 
 $pageSubtitle = match (true) {
     request()->routeIs('admin.dashboard') => $text('Resumo operacional do caixa corporativo.'),

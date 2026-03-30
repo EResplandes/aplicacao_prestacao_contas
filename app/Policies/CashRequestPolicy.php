@@ -59,4 +59,18 @@ class CashRequestPolicy
     {
         return $this->view($user, $cashRequest);
     }
+
+    public function viewChat(User $user, CashRequest $cashRequest): bool
+    {
+        return $cashRequest->user_id === $user->id
+            || $user->can('cash_requests.financial_approve')
+            || $user->can('cash_requests.release')
+            || $user->hasRole('admin')
+            || $user->hasRole('finance');
+    }
+
+    public function sendChatMessage(User $user, CashRequest $cashRequest): bool
+    {
+        return $this->viewChat($user, $cashRequest);
+    }
 }

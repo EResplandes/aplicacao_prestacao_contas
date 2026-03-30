@@ -77,7 +77,9 @@ class LoginRequest extends FormRequest
             Auth::logout();
 
             throw ValidationException::withMessages([
-                'email' => 'Este perfil acessa somente o aplicativo mobile.',
+                'email' => AdminPanel::isRequester($authenticatedUser)
+                    ? 'O perfil solicitante acessa somente o aplicativo mobile.'
+                    : 'Este perfil não possui acesso ao painel administrativo.',
             ]);
         }
 

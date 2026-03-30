@@ -241,6 +241,32 @@ class AdminAuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
+    public function test_user_with_requester_role_is_blocked_from_admin_even_if_other_roles_are_present(): void
+    {
+        $this->seed();
+
+        $requester = User::query()->where('email', 'requester@example.com')->firstOrFail();
+        $requester->syncRoles([
+            Role::findByName('requester', 'web'),
+            Role::findByName('admin', 'web'),
+        ]);
+
+        $this->from('/login')
+            ->withHeader('Origin', config('app.url'))
+            ->post('/login', [
+                'email' => 'requester@example.com',
+                'password' => 'password',
+            ])
+            ->assertRedirect('/login')
+            ->assertSessionHasErrors('email');
+
+        $this->assertGuest();
+
+        $this->actingAs($requester)
+            ->get('/admin/dashboard')
+            ->assertForbidden();
+    }
+
     public function test_failed_web_login_creates_security_event(): void
     {
         $this->seed();

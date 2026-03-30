@@ -15,9 +15,9 @@
 
         <div class="quick-grid">
             <a class="quick-card is-primary" href="{{ route('admin.dashboard') }}">
-                <span class="card-kicker">Visao geral</span>
+                <span class="card-kicker">Visão geral</span>
                 <h4>Resumo executivo</h4>
-                <p>Solicitado, aprovado, liberado e pendente de prestacao em uma unica leitura.</p>
+                <p>Solicitado, aprovado, liberado e pendente de prestação em uma única leitura.</p>
                 <div class="card-footer">
                     <span>{{ $metrics['open_requests'] ?? 0 }} caixas ativos</span>
                     <span>Dashboard</span>
@@ -25,19 +25,19 @@
             </a>
 
             <a class="quick-card" href="{{ route('admin.approvals.index') }}">
-                <span class="card-kicker">Aprovacoes</span>
-                <h4>Fila de decisao</h4>
-                <p>Solicitacoes aguardando gestor ou financeiro.</p>
+                <span class="card-kicker">Aprovações</span>
+                <h4>Fila de decisão</h4>
+                <p>Solicitações aguardando gestor ou financeiro.</p>
                 <div class="card-footer">
-                    <span>{{ $metrics['under_analysis_total'] ?? 0 }} em analise</span>
+                    <span>{{ $metrics['under_analysis_total'] ?? 0 }} em análise</span>
                     <span>Abrir fila</span>
                 </div>
             </a>
 
             <a class="quick-card" href="{{ route('admin.cash-monitoring.index') }}">
-                <span class="card-kicker">Prestacao</span>
+                <span class="card-kicker">Prestação</span>
                 <h4>Caixas e gastos</h4>
-                <p>Saldos, gastos recentes e prestacoes ainda abertas.</p>
+                <p>Saldos, gastos recentes e prestações ainda abertas.</p>
                 <div class="card-footer">
                     <span>R$ {{ number_format($metrics['open_balance'] ?? 0, 2, ',', '.') }}</span>
                     <span>Monitorar</span>
@@ -47,7 +47,7 @@
             <a class="quick-card" href="{{ route('admin.cost-centers.index') }}">
                 <span class="card-kicker">Cadastro</span>
                 <h4>Centros de custo</h4>
-                <p>Base financeira pronta para operacao, aprovacao e relatorio.</p>
+                <p>Base financeira pronta para operação, aprovação e relatório.</p>
                 <div class="card-footer">
                     <span>{{ count($metrics['top_departments'] ?? []) }} frentes</span>
                     <span>Organizar</span>
@@ -65,7 +65,7 @@
         <article class="metric-card">
             <span class="metric-label">Total aprovado</span>
             <strong class="metric-value">R$ {{ number_format($metrics['approved_total'] ?? 0, 2, ',', '.') }}</strong>
-            <p class="metric-footer">Valor que ja passou pelas alcadas.</p>
+            <p class="metric-footer">Valor que ja passou pelas alçadas.</p>
         </article>
         <article class="metric-card">
             <span class="metric-label">Total gasto</span>
@@ -83,8 +83,8 @@
         <article class="section-card">
             <div class="section-header">
                 <div>
-                    <h3 class="section-title">Pendencias</h3>
-                    <p class="section-copy">Itens que pedem acao imediata do gestor, financeiro ou conformidade.</p>
+                    <h3 class="section-title">Pendências</h3>
+                    <p class="section-copy">Itens que pedem ação imediata do gestor, financeiro ou conformidade.</p>
                 </div>
             </div>
 
@@ -105,7 +105,7 @@
             <div class="section-header">
                 <div>
                     <h3 class="section-title">Alertas recentes</h3>
-                    <p class="section-copy">Fraude, OCR ou revisao financeira para tratar agora.</p>
+                    <p class="section-copy">Fraude, OCR ou revisão financeira para tratar agora.</p>
                 </div>
             </div>
 
@@ -119,7 +119,7 @@
                         <span class="status-pill">R$ {{ number_format($expense->amount, 2, ',', '.') }}</span>
                     </div>
                 @empty
-                    <div class="empty-state">Nenhum alerta critico foi registrado nas ultimas movimentacoes.</div>
+                    <div class="empty-state">Nenhum alerta critico foi registrado nas últimas movimentações.</div>
                 @endforelse
             </div>
         </article>
@@ -129,8 +129,8 @@
         <article class="table-card">
             <div class="table-header">
                 <div>
-                    <h3 class="section-title">Solicitacoes recentes</h3>
-                    <p class="section-copy">Leitura rapida da operacao para abrir detalhes ou agir na fila.</p>
+                    <h3 class="section-title">Solicitações recentes</h3>
+                    <p class="section-copy">Leitura rápida da operação para abrir detalhes ou agir na fila.</p>
                 </div>
             </div>
 
@@ -138,7 +138,7 @@
                 <table class="dashboard-table">
                     <thead>
                         <tr>
-                            <th>Solicitacao</th>
+                            <th>Solicitação</th>
                             <th>Solicitante</th>
                             <th>Status</th>
                             <th>Departamento</th>
@@ -165,7 +165,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6"><div class="empty-state">Nao existem solicitacoes para compor a lista principal.</div></td>
+                                <td colspan="6"><div class="empty-state">Não existem solicitacõees para compor a lista principal.</div></td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -177,7 +177,7 @@
             <div class="section-header">
                 <div>
                     <h3 class="section-title">Departamentos com maior uso</h3>
-                    <p class="section-copy">Areas com mais solicitacoes no periodo atual.</p>
+                    <p class="section-copy">Áreas com mais solicitaçõees no periodo atual.</p>
                 </div>
             </div>
 
@@ -186,12 +186,12 @@
                     <div class="side-item">
                         <div>
                             <strong>{{ $departmentMetric->department?->name ?? 'Sem departamento' }}</strong>
-                            <small>{{ $departmentMetric->total }} solicitacoes registradas</small>
+                            <small>{{ $departmentMetric->total }} solicitações registradas</small>
                         </div>
                         <span class="status-pill">{{ $loop->iteration }}o</span>
                     </div>
                 @empty
-                    <div class="empty-state">Ainda nao ha dados suficientes para formar o ranking.</div>
+                    <div class="empty-state">Ainda não há dados suficientes para formar o ranking.</div>
                 @endforelse
             </div>
         </article>

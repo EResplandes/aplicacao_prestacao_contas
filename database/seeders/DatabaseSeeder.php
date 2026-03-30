@@ -133,7 +133,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ],
         );
-        $admin->assignRole($adminRole);
+        $admin->syncRoles([$adminRole]);
 
         $manager = User::query()->firstOrCreate(
             ['email' => 'manager@example.com'],
@@ -147,7 +147,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ],
         );
-        $manager->assignRole($managerRole);
+        $manager->syncRoles([$managerRole]);
 
         $finance = User::query()->firstOrCreate(
             ['email' => 'finance@example.com'],
@@ -161,7 +161,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ],
         );
-        $finance->assignRole($financeRole);
+        $finance->syncRoles([$financeRole]);
 
         $requester = User::query()->firstOrCreate(
             ['email' => 'requester@example.com'],
@@ -176,7 +176,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ],
         );
-        $requester->assignRole($requesterRole);
+        $requester->syncRoles([$requesterRole]);
 
         $onboardingRequester = User::query()->firstOrCreate(
             ['email' => 'new.requester@example.com'],
@@ -191,7 +191,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ],
         );
-        $onboardingRequester->assignRole($requesterRole);
+        $onboardingRequester->syncRoles([$requesterRole]);
 
         ExpenseCategory::query()->firstOrCreate(
             ['code' => 'ALIMENTACAO'],

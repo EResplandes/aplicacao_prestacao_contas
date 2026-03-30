@@ -1,3 +1,7 @@
+@php
+    $text = static fn (string $value): string => html_entity_decode($value, ENT_QUOTES, 'UTF-8');
+@endphp
+
 <div class="stack-lg" wire:key="cash-request-detail-{{ $cashRequest->public_id }}">
     @if ($feedbackMessage)
         <div class="{{ $feedbackTone === 'error' ? 'rounded-[20px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700' : 'flash' }}">
@@ -255,7 +259,7 @@
                         <summary class="expense-summary">
                             <div>
                                 <strong>Pagamento registrado</strong>
-                                <div class="secondary-text">Liberação concluída em {{ $cashRequest->released_at->format('d/m/Y H:i') }}.</div>
+                                <div class="secondary-text">{{ $text('Libera&ccedil;&atilde;o conclu&iacute;da em') }} {{ $cashRequest->released_at->format('d/m/Y H:i') }}.</div>
                             </div>
                             <div class="list-meta">
                                 <span class="status-pill is-success">Comprovado</span>
@@ -271,15 +275,15 @@
                                 </div>
                                 <div class="detail-item">
                                     <span class="label">Meio de pagamento</span>
-                                    <p>{{ $latestDeposit?->payment_method ? \App\Support\AdminLabel::paymentMethod($latestDeposit->payment_method) : 'Não informado' }}</p>
+                                    <p>{{ $latestDeposit?->payment_method ? \App\Support\AdminLabel::paymentMethod($latestDeposit->payment_method) : $text('N&atilde;o informado') }}</p>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="label">Responsável pela liberação</span>
-                                    <p>{{ $latestDeposit?->releasedBy?->name ?? 'Não informado' }}</p>
+                                    <span class="label">{{ $text('Respons&aacute;vel pela libera&ccedil;&atilde;o') }}</span>
+                                    <p>{{ $latestDeposit?->releasedBy?->name ?? $text('N&atilde;o informado') }}</p>
                                 </div>
                                 <div class="detail-item">
-                                    <span class="label">Referência</span>
-                                    <p>{{ $latestDeposit?->reference_number ?? 'Sem número de referência' }}</p>
+                                    <span class="label">{{ $text('Refer&ecirc;ncia') }}</span>
+                                    <p>{{ $latestDeposit?->reference_number ?? $text('Sem n&uacute;mero de refer&ecirc;ncia') }}</p>
                                 </div>
                             </div>
 
@@ -406,6 +410,13 @@
             @endforeach
         </div>
     </section>
+
+    @if (\App\Support\AdminPanel::canViewFinanceChat(auth()->user(), $cashRequest))
+        <livewire:admin.cash-requests.chat-panel
+            :cash-request="$cashRequest"
+            :wire:key="'cash-request-chat-'.$cashRequest->public_id"
+        />
+    @endif
 
     <section class="grid-2">
         <article class="section-card">
